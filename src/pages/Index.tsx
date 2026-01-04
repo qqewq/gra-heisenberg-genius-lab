@@ -35,16 +35,17 @@ function SimulatorContent() {
     setResult(null);
 
     try {
-      const simulationResult = await runSimulation(goal, params);
+      const simulationResult = await runSimulation(goal, params, language);
       setResult(simulationResult);
       toast.success(language === 'ru'
         ? 'Симуляция завершена'
         : 'Simulation complete'
       );
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(language === 'ru'
-        ? 'Ошибка симуляции'
-        : 'Simulation error'
+        ? `Ошибка симуляции: ${errorMessage}`
+        : `Simulation error: ${errorMessage}`
       );
     } finally {
       setIsRunning(false);
