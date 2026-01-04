@@ -1,0 +1,60 @@
+import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { t } from '@/lib/translations';
+import { SimulationResult } from '@/lib/simulation';
+import { FormalizationTab } from './FormalizationTab';
+import { InnerLoopTab } from './InnerLoopTab';
+import { OuterLoopTab } from './OuterLoopTab';
+import { ConclusionTab } from './ConclusionTab';
+import { DiagnosticsTab } from './DiagnosticsTab';
+import { cn } from '@/lib/utils';
+
+interface ResultTabsProps {
+  result: SimulationResult;
+}
+
+type TabKey = 'formalization' | 'innerLoop' | 'outerLoop' | 'conclusion' | 'diagnostics';
+
+export function ResultTabs({ result }: ResultTabsProps) {
+  const { language } = useLanguage();
+  const [activeTab, setActiveTab] = useState<TabKey>('formalization');
+
+  const tabs: { key: TabKey; translationKey: string }[] = [
+    { key: 'formalization', translationKey: 'tabs.formalization' },
+    { key: 'innerLoop', translationKey: 'tabs.innerLoop' },
+    { key: 'outerLoop', translationKey: 'tabs.outerLoop' },
+    { key: 'conclusion', translationKey: 'tabs.conclusion' },
+    { key: 'diagnostics', translationKey: 'tabs.diagnostics' },
+  ];
+
+  return (
+    <div className="glass-card glow-border overflow-hidden fade-in">
+      {/* Tab header */}
+      <div className="flex overflow-x-auto border-b border-border/50 bg-muted/20">
+        {tabs.map(({ key, translationKey }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={cn(
+              'px-4 py-3 text-sm font-medium whitespace-nowrap transition-all duration-200 border-b-2',
+              activeTab === key
+                ? 'text-primary border-primary bg-primary/5'
+                : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30'
+            )}
+          >
+            {t(translationKey, language)}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="p-6">
+        {activeTab === 'formalization' && <FormalizationTab result={result} />}
+        {activeTab === 'innerLoop' && <InnerLoopTab result={result} />}
+        {activeTab === 'outerLoop' && <OuterLoopTab result={result} />}
+        {activeTab === 'conclusion' && <ConclusionTab result={result} />}
+        {activeTab === 'diagnostics' && <DiagnosticsTab result={result} />}
+      </div>
+    </div>
+  );
+}
