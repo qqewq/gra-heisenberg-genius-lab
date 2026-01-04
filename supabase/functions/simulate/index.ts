@@ -1,0 +1,176 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { goal, params, language } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    console.log("Starting simulation for goal:", goal, "with params:", params, "language:", language);
+
+    const systemPrompt = `You are a "AI Genius" simulator based on the GRA-Heisenberg architecture. Your task is to conduct deep scientific-philosophical analysis of the user's research goal.
+
+The architecture works as follows:
+1. Inner Loop: iterative theory refinement through minimization of functional Φ(θ) = H(θ) + λ·R(θ)
+2. Outer Loop: meta-adaptation of Heisenberg uncertainty ε and goals G
+
+Simulation parameters:
+- Complexity: ${params.complexity}/10
+- Inner loop steps: ${params.innerSteps}
+- Meta-iteration frequency: every ${params.metaFrequency} steps
+- Initial Heisenberg uncertainty: ${params.heisenberg}
+
+You MUST return a valid JSON object with this EXACT structure (no markdown, no code blocks):
+{
+  "formalization": {
+    "ru": "Russian: formalized description of the problem using mathematical notation",
+    "en": "English: formalized description of the problem using mathematical notation", 
+    "complexity": <number between 2 and 8>
+  },
+  "innerLoop": {
+    "trajectory": [
+      {"t": 0, "phi": 1.0, "entropy": 0.5},
+      ... generate ${Math.min(params.innerSteps, 50)} realistic trajectory points with decreasing phi and varying entropy
+    ],
+    "phiFinal": <final phi value, small number like 0.05-0.2>,
+    "entropyFinal": <final entropy value 0.1-0.5>,
+    "heisenbergUsed": ${params.heisenberg}
+  },
+  "outerLoop": {
+    "iterations": [
+      {"k": 0, "heisenberg": <value>, "goalUpdate": {"ru": "Russian update description", "en": "English update description"}, "lambdas": [<3 numbers>]},
+      ... generate ${Math.ceil(params.innerSteps / params.metaFrequency)} meta-iterations
+    ],
+    "totalIterations": <number of iterations>,
+    "finalHeisenberg": <final heisenberg value>,
+    "convergenceRate": <0.7-0.95>
+  },
+  "conclusion": {
+    "summary": {"ru": "Russian summary of findings", "en": "English summary of findings"},
+    "hypotheses": [
+      {"ru": "Russian hypothesis 1", "en": "English hypothesis 1"},
+      {"ru": "Russian hypothesis 2", "en": "English hypothesis 2"},
+      {"ru": "Russian hypothesis 3", "en": "English hypothesis 3"}
+    ],
+    "predictions": [
+      {"ru": "Russian prediction 1", "en": "English prediction 1"},
+      {"ru": "Russian prediction 2", "en": "English prediction 2"}
+    ]
+  },
+  "diagnostics": {
+    "geniusScore": <0.6-0.95>,
+    "phiProximity": <0.6-0.95>,
+    "pathOptimality": <0.5-0.9>,
+    "coherence": <0.7-0.95>,
+    "stability": <0.65-0.95>
+  }
+}
+
+IMPORTANT: 
+- Generate meaningful, scientific content related to the research goal
+- Use proper mathematical notation where appropriate (Φ, ψ, ℏ, etc.)
+- Make trajectory data realistic with decreasing phi values
+- All text fields must have both "ru" and "en" versions
+- Return ONLY the JSON, no explanations`;
+
+    const userPrompt = `Research goal: "${goal}"
+
+Generate a complete simulation result with realistic data. The content should be scientifically meaningful and relate to the research goal. Generate trajectory with ${Math.min(params.innerSteps, 50)} points and ${Math.ceil(params.innerSteps / params.metaFrequency)} meta-iterations.`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    const aiResponse = await response.json();
+    const content = aiResponse.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("No content in AI response");
+    }
+
+    console.log("AI response received, parsing...");
+
+    // Parse JSON from response (handle potential markdown wrapping)
+    let result;
+    try {
+      // Try to extract JSON from potential markdown code blocks
+      let jsonStr = content;
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1];
+      } else {
+        // Try to find raw JSON object
+        const objMatch = content.match(/\{[\s\S]*\}/);
+        if (objMatch) {
+          jsonStr = objMatch[0];
+        }
+      }
+      result = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", parseError, "Content:", content);
+      throw new Error("Failed to parse simulation result");
+    }
+
+    // Validate required fields
+    if (!result.formalization || !result.innerLoop || !result.outerLoop || !result.conclusion || !result.diagnostics) {
+      console.error("Missing required fields in result:", Object.keys(result));
+      throw new Error("Incomplete simulation result");
+    }
+
+    console.log("Simulation completed successfully");
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error("Simulation error:", error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
