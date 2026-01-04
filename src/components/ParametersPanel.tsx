@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { t } from '@/lib/translations';
 import { Slider } from '@/components/ui/slider';
@@ -15,7 +16,8 @@ interface ParametersPanelProps {
   setParams: (params: SimulationParams) => void;
 }
 
-export function ParametersPanel({ params, setParams }: ParametersPanelProps) {
+export const ParametersPanel = forwardRef<HTMLDivElement, ParametersPanelProps>(
+  function ParametersPanel({ params, setParams }, ref) {
   const { language } = useLanguage();
 
   const paramConfig = [
@@ -26,7 +28,7 @@ export function ParametersPanel({ params, setParams }: ParametersPanelProps) {
   ] as const;
 
   return (
-    <div className="glass-card glow-border p-6">
+    <div ref={ref} className="glass-card glow-border p-6">
       <h3 className="section-title mb-4">
         {language === 'ru' ? 'Параметры симуляции' : 'Simulation Parameters'}
       </h3>
@@ -55,4 +57,4 @@ export function ParametersPanel({ params, setParams }: ParametersPanelProps) {
       </div>
     </div>
   );
-}
+});
