@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { ArchitectureCard } from '@/components/ArchitectureCard';
 import { InputSection } from '@/components/InputSection';
@@ -9,9 +11,12 @@ import { ResultTabs } from '@/components/results/ResultTabs';
 import { runSimulation, SimulationResult, SimulationParams } from '@/lib/simulation';
 import { t } from '@/lib/translations';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 function SimulatorContent() {
   const { language } = useLanguage();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [goal, setGoal] = useState('');
   const [params, setParams] = useState<SimulationParams>({
     complexity: 5,
@@ -21,6 +26,12 @@ function SimulatorContent() {
   });
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<SimulationResult | null>(null);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   const handleRunSimulation = async () => {
     if (!goal.trim()) {
@@ -51,6 +62,18 @@ function SimulatorContent() {
       setIsRunning(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
