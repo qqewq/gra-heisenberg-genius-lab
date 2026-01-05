@@ -51,6 +51,7 @@ export const ParametersPanel = forwardRef<HTMLDivElement, ParametersPanelProps>(
               step={step}
               onValueChange={([value]) => setParams({ ...params, [key]: value })}
               className="cursor-pointer"
+              aria-label={t(`params.${translationKey}`, language)}
             />
           </div>
         ))}
