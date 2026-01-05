@@ -1,10 +1,12 @@
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { t } from '@/lib/translations';
 import { Button } from '@/components/ui/button';
-import { Globe, Atom } from 'lucide-react';
+import { Globe, Atom, LogOut } from 'lucide-react';
 
 export function Header() {
   const { language, toggleLanguage } = useLanguage();
+  const { user, signOut } = useAuth();
 
   return (
     <header className="relative py-8 px-4 overflow-hidden">
@@ -23,15 +25,31 @@ export function Header() {
             </h1>
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleLanguage}
-            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/10 transition-all duration-300"
-          >
-            <Globe className="w-4 h-4" />
-            <span className="font-mono">{language.toUpperCase()}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleLanguage}
+              className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/10 transition-all duration-300"
+            >
+              <Globe className="w-4 h-4" />
+              <span className="font-mono">{language.toUpperCase()}</span>
+            </Button>
+            
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={signOut}
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {language === 'ru' ? 'Выйти' : 'Logout'}
+                </span>
+              </Button>
+            )}
+          </div>
         </div>
         
         <p className="text-muted-foreground text-center md:text-left max-w-2xl">
