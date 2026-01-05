@@ -1,10 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const inputSchema = z.object({
+  goal: z.string().min(1, "Goal is required").max(5000, "Goal too long"),
+  params: z.object({
+    complexity: z.number().min(1).max(10),
+    innerSteps: z.number().int().min(1).max(500),
+    metaFrequency: z.number().int().min(1).max(100),
+    heisenberg: z.number().min(0).max(1)
+  }),
+  language: z.enum(['ru', 'en'])
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -39,14 +52,40 @@ serve(async (req) => {
 
     console.log("Authenticated user:", user.id);
 
-    const { goal, params, language } = await req.json();
+    // Parse and validate input
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      console.error("Invalid JSON in request body");
+      return new Response(JSON.stringify({ error: 'Invalid request format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const validationResult = inputSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error("Input validation failed:", validationResult.error.errors);
+      return new Response(JSON.stringify({ error: 'Invalid input parameters' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { goal, params, language } = validationResult.data;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log("Starting simulation for goal:", goal, "with params:", params, "language:", language, "user:", user.id);
+    console.log("Starting simulation for goal (truncated):", goal.substring(0, 100), "params:", params, "language:", language, "user:", user.id);
 
     const systemPrompt = `You are a "AI Genius" simulator based on the GRA-Heisenberg architecture. Your task is to conduct deep scientific-philosophical analysis of the user's research goal.
 
@@ -133,28 +172,36 @@ Generate a complete simulation result with realistic data. The content should be
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+        return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits." }), {
-          status: 402,
+        return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
+          status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content;
     
     if (!content) {
-      throw new Error("No content in AI response");
+      console.error("No content in AI response");
+      return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log("AI response received, parsing...");
@@ -177,13 +224,19 @@ Generate a complete simulation result with realistic data. The content should be
       result = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError, "Content:", content);
-      throw new Error("Failed to parse simulation result");
+      return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Validate required fields
     if (!result.formalization || !result.innerLoop || !result.outerLoop || !result.conclusion || !result.diagnostics) {
       console.error("Missing required fields in result:", Object.keys(result));
-      throw new Error("Incomplete simulation result");
+      return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log("Simulation completed successfully");
@@ -194,9 +247,7 @@ Generate a complete simulation result with realistic data. The content should be
 
   } catch (error) {
     console.error("Simulation error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }), {
+    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
