@@ -7,15 +7,23 @@ import { InnerLoopTab } from './InnerLoopTab';
 import { OuterLoopTab } from './OuterLoopTab';
 import { ConclusionTab } from './ConclusionTab';
 import { DiagnosticsTab } from './DiagnosticsTab';
+import {
+  FormalizationSkeleton,
+  InnerLoopSkeleton,
+  OuterLoopSkeleton,
+  ConclusionSkeleton,
+  DiagnosticsSkeleton,
+} from './ResultSkeletons';
 import { cn } from '@/lib/utils';
 
 interface ResultTabsProps {
-  result: SimulationResult;
+  result?: SimulationResult | null;
+  isLoading?: boolean;
 }
 
 type TabKey = 'formalization' | 'innerLoop' | 'outerLoop' | 'conclusion' | 'diagnostics';
 
-export function ResultTabs({ result }: ResultTabsProps) {
+export function ResultTabs({ result, isLoading = false }: ResultTabsProps) {
   const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabKey>('formalization');
 
@@ -26,6 +34,38 @@ export function ResultTabs({ result }: ResultTabsProps) {
     { key: 'conclusion', translationKey: 'tabs.conclusion' },
     { key: 'diagnostics', translationKey: 'tabs.diagnostics' },
   ];
+
+  const renderContent = () => {
+    if (isLoading) {
+      switch (activeTab) {
+        case 'formalization':
+          return <FormalizationSkeleton />;
+        case 'innerLoop':
+          return <InnerLoopSkeleton />;
+        case 'outerLoop':
+          return <OuterLoopSkeleton />;
+        case 'conclusion':
+          return <ConclusionSkeleton />;
+        case 'diagnostics':
+          return <DiagnosticsSkeleton />;
+      }
+    }
+
+    if (!result) return null;
+
+    switch (activeTab) {
+      case 'formalization':
+        return <FormalizationTab result={result} />;
+      case 'innerLoop':
+        return <InnerLoopTab result={result} />;
+      case 'outerLoop':
+        return <OuterLoopTab result={result} />;
+      case 'conclusion':
+        return <ConclusionTab result={result} />;
+      case 'diagnostics':
+        return <DiagnosticsTab result={result} />;
+    }
+  };
 
   return (
     <div className="glass-card glow-border overflow-hidden fade-in">
@@ -49,11 +89,7 @@ export function ResultTabs({ result }: ResultTabsProps) {
 
       {/* Tab content */}
       <div className="p-6">
-        {activeTab === 'formalization' && <FormalizationTab result={result} />}
-        {activeTab === 'innerLoop' && <InnerLoopTab result={result} />}
-        {activeTab === 'outerLoop' && <OuterLoopTab result={result} />}
-        {activeTab === 'conclusion' && <ConclusionTab result={result} />}
-        {activeTab === 'diagnostics' && <DiagnosticsTab result={result} />}
+        {renderContent()}
       </div>
     </div>
   );
