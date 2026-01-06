@@ -19,16 +19,36 @@ const inputSchema = z.object({
   language: z.enum(['ru', 'en'])
 });
 
+// Simple in-memory rate limiting
+const rateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT = 10; // requests per minute
+const RATE_WINDOW = 60000; // 1 minute in ms
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const userRequests = rateLimitMap.get(userId) || [];
+  
+  // Remove requests outside the window
+  const recentRequests = userRequests.filter(time => now - time < RATE_WINDOW);
+  
+  if (recentRequests.length >= RATE_LIMIT) {
+    return false;
+  }
+  
+  recentRequests.push(now);
+  rateLimitMap.set(userId, recentRequests);
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
+    // Verify authentication using getClaims for JWT validation
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error("No authorization header provided");
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -41,23 +61,35 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      console.error("Authentication failed:", authError?.message);
+    const token = authHeader.replace('Bearer ', '');
+    const { data, error: authError } = await supabaseClient.auth.getClaims(token);
+    
+    if (authError || !data?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log("Authenticated user:", user.id);
+    const userId = data.claims.sub as string;
+
+    // Check rate limit
+    if (!checkRateLimit(userId)) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': '60'
+        },
+      });
+    }
 
     // Parse and validate input
     let body;
     try {
       body = await req.json();
     } catch {
-      console.error("Invalid JSON in request body");
       return new Response(JSON.stringify({ error: 'Invalid request format' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -66,7 +98,6 @@ serve(async (req) => {
 
     const validationResult = inputSchema.safeParse(body);
     if (!validationResult.success) {
-      console.error("Input validation failed:", validationResult.error.errors);
       return new Response(JSON.stringify({ error: 'Invalid input parameters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -78,14 +109,12 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
+      console.error("API key not configured");
       return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    console.log("Starting simulation for goal (truncated):", goal.substring(0, 100), "params:", params, "language:", language, "user:", user.id);
 
     const systemPrompt = `You are a "AI Genius" simulator based on the GRA-Heisenberg architecture. Your task is to conduct deep scientific-philosophical analysis of the user's research goal.
 
@@ -172,8 +201,7 @@ Generate a complete simulation result with realistic data. The content should be
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("AI gateway error:", response.status);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
@@ -197,14 +225,12 @@ Generate a complete simulation result with realistic data. The content should be
     const content = aiResponse.choices?.[0]?.message?.content;
     
     if (!content) {
-      console.error("No content in AI response");
+      console.error("Empty AI response");
       return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    console.log("AI response received, parsing...");
 
     // Parse JSON from response (handle potential markdown wrapping)
     let result;
@@ -223,12 +249,11 @@ Generate a complete simulation result with realistic data. The content should be
       }
       
       // Fix invalid escape sequences in JSON (LaTeX backslashes like \forall, \zeta, etc.)
-      // Replace single backslashes with double backslashes, but preserve already escaped ones
       jsonStr = jsonStr.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
       
       result = JSON.parse(jsonStr);
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError, "Content:", content.substring(0, 500));
+    } catch {
+      console.error("Failed to parse AI response");
       return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -237,21 +262,19 @@ Generate a complete simulation result with realistic data. The content should be
 
     // Validate required fields
     if (!result.formalization || !result.innerLoop || !result.outerLoop || !result.conclusion || !result.diagnostics) {
-      console.error("Missing required fields in result:", Object.keys(result));
+      console.error("Missing required fields in response");
       return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Simulation completed successfully");
-
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
-    console.error("Simulation error:", error);
+    console.error("Unexpected error occurred");
     return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
