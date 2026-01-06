@@ -106,12 +106,12 @@ function SimulatorContent() {
           </div>
 
           {/* Results */}
-          {result && (
+          {(isRunning || result) && (
             <div className="pt-4">
               <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 {t('results.title', language)}
               </h2>
-              <ResultTabs result={result} />
+              <ResultTabs result={result} isLoading={isRunning} />
             </div>
           )}
         </main>
