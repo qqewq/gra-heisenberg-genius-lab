@@ -221,9 +221,14 @@ Generate a complete simulation result with realistic data. The content should be
           jsonStr = objMatch[0];
         }
       }
+      
+      // Fix invalid escape sequences in JSON (LaTeX backslashes like \forall, \zeta, etc.)
+      // Replace single backslashes with double backslashes, but preserve already escaped ones
+      jsonStr = jsonStr.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+      
       result = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError, "Content:", content);
+      console.error("Failed to parse AI response:", parseError, "Content:", content.substring(0, 500));
       return new Response(JSON.stringify({ error: "Request failed. Please try again." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
