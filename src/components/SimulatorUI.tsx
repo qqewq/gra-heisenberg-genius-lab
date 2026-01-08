@@ -4,9 +4,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { InputSection } from '@/components/InputSection'; // ← ДОБАВЛЕНО
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 // Типы
 interface SimulationResult {
@@ -62,8 +63,20 @@ export function SimulatorUI() {
 
   return (
     <div className="space-y-6">
-      {/* ← ДОБАВЛЕНО: Ввод цели G₀ */}
-      <InputSection goal={goal} onGoalChange={setGoal} />
+      {/* Ввод цели G₀ */}
+      <div className="glass-card glow-border p-6">
+        <Label htmlFor="goal" className="section-title block mb-3">
+          Цель исследования (G₀)
+        </Label>
+        <Textarea
+          id="goal"
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+          placeholder="Опишите цель исследования..."
+          className="min-h-[120px] bg-muted/30 border-border/50 focus:border-primary/50 focus:ring-primary/20 resize-none font-mono text-sm"
+          maxLength={5000}
+        />
+      </div>
 
       <Card>
         <CardHeader>
