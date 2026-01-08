@@ -78,7 +78,7 @@ function SimulatorContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Background effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl" />
       </div>
@@ -86,7 +86,7 @@ function SimulatorContent() {
       <div className="relative z-10">
         <Header />
 
-        <main className="container mx-auto max-w-5xl px-4 pb-12 space-y-6">
+        <main className="container mx-auto max-w-5xl px-4 pb-12 space-y-6" role="main">
           {/* Architecture description */}
           <ArchitectureCard />
 
