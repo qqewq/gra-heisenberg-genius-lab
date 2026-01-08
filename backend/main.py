@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import torch
 import numpy as np
@@ -8,18 +8,18 @@ from graham_optimizer.core import GRAOptimizer
 app = FastAPI(title="GRA-Heisenberg API", version="1.0")
 
 class SimulationParams(BaseModel):
-    complexity_level: int = 1
-    inner_steps: int = 8
-    meta_frequency: int = 3
-    heisenberg_constant: float = 0.01
-    grid_resolution: int = 200
-    target_energy: float = 1.732
-    target_transition_probability: float = 0.25
+    complexity_level: int = Field(default=1, ge=1, le=10, description="Complexity level (1-10)")
+    inner_steps: int = Field(default=8, ge=1, le=500, description="Inner loop steps (1-500)")
+    meta_frequency: int = Field(default=3, ge=1, le=100, description="Meta-update frequency (1-100)")
+    heisenberg_constant: float = Field(default=0.01, ge=0.001, le=1.0, description="Heisenberg constant (0.001-1.0)")
+    grid_resolution: int = Field(default=200, ge=10, le=1000, description="Grid resolution (10-1000)")
+    target_energy: float = Field(default=1.732, ge=0.1, le=100.0, description="Target energy (0.1-100.0)")
+    target_transition_probability: float = Field(default=0.25, ge=0.0, le=1.0, description="Target transition probability (0-1)")
 
 class QuantumGoal(BaseModel):
-    target_energy: float
-    target_transition_probability: float
-    lambda_param: float = 0.5
+    target_energy: float = Field(..., ge=0.1, le=100.0, description="Target energy (0.1-100.0)")
+    target_transition_probability: float = Field(..., ge=0.0, le=1.0, description="Target transition probability (0-1)")
+    lambda_param: float = Field(default=0.5, ge=0.0, le=1.0, description="Lambda parameter (0-1)")
 
 @app.post("/simulate")
 async def run_simulation(params: SimulationParams, goal: QuantumGoal):

@@ -91,7 +91,7 @@ function SimulatorContent() {
           <ArchitectureCard />
 
           {/* Input section */}
-          <InputSection goal={goal} setGoal={setGoal} />
+          <InputSection goal={goal} onGoalChange={setGoal} />
 
           {/* Parameters */}
           <ParametersPanel params={params} setParams={setParams} />
