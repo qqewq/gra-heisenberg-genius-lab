@@ -28,11 +28,11 @@ export function ResultTabs({ result, isLoading = false }: ResultTabsProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('formalization');
 
   const tabs: { key: TabKey; translationKey: string }[] = [
-    { key: 'formalization', translationKey: 'tabs.formalization' },
-    { key: 'innerLoop', translationKey: 'tabs.innerLoop' },
-    { key: 'outerLoop', translationKey: 'tabs.outerLoop' },
-    { key: 'conclusion', translationKey: 'tabs.conclusion' },
-    { key: 'diagnostics', translationKey: 'tabs.diagnostics' },
+    { key: 'formalization', translationKey: 'results.tabs.formalization' },
+    { key: 'innerLoop', translationKey: 'results.tabs.innerLoop' },
+    { key: 'outerLoop', translationKey: 'results.tabs.outerLoop' },
+    { key: 'conclusion', translationKey: 'results.tabs.conclusion' },
+    { key: 'diagnostics', translationKey: 'results.tabs.diagnostics' },
   ];
 
   const renderContent = () => {

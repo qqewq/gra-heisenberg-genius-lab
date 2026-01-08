@@ -28,7 +28,7 @@ export function DiagnosticsTab({ result }: DiagnosticsTabProps) {
       {/* Metrics */}
       <div className="space-y-4">
         <DiagnosticMetric
-          label={t('results.diagnostics.phiProximity', language)}
+          label={language === 'ru' ? 'Близость к Φ_min' : 'Φ Proximity'}
           value={data.phiProximity}
           description={language === 'ru' 
             ? `Текущее значение Φ близко к минимуму на ${(data.phiProximity * 100).toFixed(1)}%`
@@ -37,7 +37,7 @@ export function DiagnosticsTab({ result }: DiagnosticsTabProps) {
         />
         
         <DiagnosticMetric
-          label={t('results.diagnostics.optimalPath', language)}
+          label={language === 'ru' ? 'Оптимальность пути' : 'Path Optimality'}
           value={data.pathOptimality}
           description={language === 'ru'
             ? `Траектория оптимальна на ${(data.pathOptimality * 100).toFixed(1)}%`

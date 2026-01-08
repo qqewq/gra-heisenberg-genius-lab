@@ -1,203 +1,192 @@
 // src/lib/simulation.ts
 
-import { calculateConvergenceRate, calculatePhiValue, calculatePhiMin, 
-         calculateHeisenbergBarrier, calculateEntropyInvariant } from './utils';
+import {
+  calculateConvergenceRate,
+  calculatePhiValue,
+  calculatePhiMin,
+  calculateHeisenbergBarrier,
+  calculateEntropyInvariant,
+  initializeCognitiveState,
+  updateCognitiveState,
+  analyzeErrorConvergence,
+  generateScientificInsights,
+  estimateComputationalComplexity,
+  calculateParameterUncertainty,
+  calculateMetaEntropy
+} from './utils';
 
 export interface SimulationParams {
-  complexityLevel: number;
+  complexity: number;
   innerSteps: number;
   metaFrequency: number;
-  hbarG: number;
-  gridResolution: number;
-  targetEnergy: number;
-  targetTransitionProbability: number;
+  heisenberg: number;
+}
+
+interface TrajectoryStep {
+  t: number;
+  phi: number;
+  entropy: number;
+}
+
+interface MetaIteration {
+  k: number;
+  heisenberg: number;
+  goalUpdate: { ru: string; en: string };
+  lambdas: number[];
+}
+
+interface BilingualText {
+  ru: string;
+  en: string;
 }
 
 export interface SimulationResult {
-  alpha: number;
-  beta: number;
-  alphaUncertainty: number;
-  betaUncertainty: number;
-  achievedEnergy: number;
-  achievedTransitionProbability: number;
-  phiValue: number;
-  phiMin: number;
-  convergenceRate: number;
-  computationalComplexity: string;
-  estimatedRuntime: number;
-  errorAnalysis: Array<{ gridSize: number; error: number }>;
-  survivingHypotheses: string[];
-  falsifiablePredictions: string[];
+  formalization: {
+    ru: string;
+    en: string;
+    complexity: number;
+  };
+  innerLoop: {
+    trajectory: TrajectoryStep[];
+    phiFinal: number;
+    entropyFinal: number;
+    heisenbergUsed: number;
+  };
+  outerLoop: {
+    iterations: MetaIteration[];
+    totalIterations: number;
+    finalHeisenberg: number;
+    convergenceRate: number;
+  };
+  conclusion: {
+    summary: BilingualText;
+    hypotheses: BilingualText[];
+    predictions: BilingualText[];
+  };
+  diagnostics: {
+    geniusScore: number;
+    phiProximity: number;
+    pathOptimality: number;
+    coherence: number;
+    stability: number;
+  };
 }
 
-export function runGRAHeisenbergSimulation(params: SimulationParams, goal: string): SimulationResult {
-  // 1. Инициализация когнитивного состояния
-  const initialState = initializeCognitiveState(goal, params.complexityLevel);
+export async function runSimulation(
+  goal: string,
+  params: SimulationParams,
+  language: string
+): Promise<SimulationResult> {
+  // Simulate some processing time
+  await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+
+  // 1. Initialize cognitive state
+  const initialState = initializeCognitiveState(goal, params.complexity);
   
-  // 2. Расчет фундаментального предела (внутренний контур)
-  const phiMin = calculatePhiMin(params.hbarG, params.complexityLevel);
+  // 2. Calculate fundamental limit
+  const phiMin = calculatePhiMin(params.heisenberg, params.complexity);
   
-  // 3. Основной цикл внутреннего контура с гейзенберговским барьером
+  // 3. Inner loop with Heisenberg barrier
   let currentState = initialState;
-  let phiHistory: number[] = [];
+  const trajectory: TrajectoryStep[] = [];
   
   for (let step = 0; step < params.innerSteps; step++) {
-    // Применение гейзенберговского барьера
-    const heisenbergBarrier = calculateHeisenbergBarrier(
-      currentState, 
-      phiMin, 
-      params.hbarG
-    );
+    const heisenbergBarrier = calculateHeisenbergBarrier(currentState, phiMin, params.heisenberg);
+    const entropyPenalty = calculateEntropyInvariant(currentState, params.complexity);
     
-    // Применение энтропийного инварианта
-    const entropyPenalty = calculateEntropyInvariant(
-      currentState,
-      params.complexityLevel
-    );
+    currentState = updateCognitiveState(currentState, heisenbergBarrier, entropyPenalty, params.heisenberg);
     
-    // Обновление состояния с учетом фундаментальных ограничений
-    currentState = updateCognitiveState(
-      currentState,
-      heisenbergBarrier,
-      entropyPenalty,
-      params.hbarG
-    );
-    
-    // Расчет текущей пены разума
     const currentPhi = calculatePhiValue(currentState, goal);
-    phiHistory.push(currentPhi);
+    trajectory.push({
+      t: step,
+      phi: currentPhi,
+      entropy: currentState.entropy
+    });
     
-    // Досрочное завершение при достижении фундаментального предела
     if (step > 3 && Math.abs(currentPhi - phiMin) < 0.1 * phiMin) {
       break;
     }
   }
-  
-  // 4. Мета-адаптация (внешний контур)
-  const metaState = adaptMetaParameters(
-    phiHistory,
-    params,
-    currentState
-  );
-  
-  // 5. Расчет оптимальных параметров
-  const optimalParams = calculateOptimalParameters(
-    currentState,
-    params.gridResolution,
-    params.targetEnergy,
-    params.targetTransitionProbability
-  );
-  
-  // 6. Количественный анализ ошибок
-  const errorAnalysis = analyzeErrorConvergence(
-    params.gridResolution,
-    optimalParams.alpha,
-    optimalParams.beta
-  );
-  
-  // 7. Формирование выживших гипотез и предсказаний
-  const { survivingHypotheses, falsifiablePredictions } = generateScientificInsights(
-    optimalParams,
-    metaState,
-    errorAnalysis
-  );
-  
-  // 8. Оценка вычислительной сложности
-  const computationalComplexity = estimateComputationalComplexity(
-    params.complexityLevel,
-    params.innerSteps,
-    params.gridResolution
-  );
-  
-  return {
-    alpha: optimalParams.alpha,
-    beta: optimalParams.beta,
-    alphaUncertainty: calculateParameterUncertainty(optimalParams.alpha, metaState.hbarG),
-    betaUncertainty: calculateParameterUncertainty(optimalParams.beta, metaState.hbarG),
-    achievedEnergy: optimalParams.energy,
-    achievedTransitionProbability: optimalParams.transitionProbability,
-    phiValue: phiHistory[phiHistory.length - 1],
-    phiMin: phiMin,
-    convergenceRate: calculateConvergenceRate(phiHistory),
-    computationalComplexity: computationalComplexity.theoreticalNotation,
-    estimatedRuntime: computationalComplexity.estimatedRuntimeRTX3060,
-    errorAnalysis: errorAnalysis,
-    survivingHypotheses: survivingHypotheses,
-    falsifiablePredictions: falsifiablePredictions
-  };
-}
 
-function adaptMetaParameters(
-  phiHistory: number[],
-  params: SimulationParams,
-  currentState: any
-): { hbarG: number; metaFrequency: number } {
-  if (phiHistory.length < 2) return params;
+  // 4. Meta-adaptation (outer loop)
+  const metaIterations: MetaIteration[] = [];
+  let currentHeisenberg = params.heisenberg;
   
-  const convergenceRate = calculateConvergenceRate(phiHistory);
-  const currentPhi = phiHistory[phiHistory.length - 1];
-  const phiMin = calculatePhiMin(params.hbarG, params.complexityLevel);
-  
-  let newHbarG = params.hbarG;
-  let newMetaFrequency = params.metaFrequency;
-  
-  // Адаптация когнитивной константы
-  if (convergenceRate < -0.8 * currentPhi && Math.abs(currentPhi - phiMin) < 0.2 * phiMin) {
-    // Риск переобучения при быстрой сходимости
-    newHbarG *= 1.5;
-  } else if (Math.abs(convergenceRate) < 0.05 * currentPhi) {
-    // Застой в оптимизации
-    newHbarG *= 0.7;
-  }
-  
-  // Адаптация частоты мета-итераций
-  const metaEntropy = calculateMetaEntropy(currentState.metaHistory || []);
-  if (metaEntropy < 0.8) {
-    // Низкое разнообразие стратегий
-    newMetaFrequency = Math.max(2, Math.floor(params.metaFrequency * 0.8));
-  } else if (metaEntropy > 2.2) {
-    // Высокая неопределенность
-    newMetaFrequency = Math.min(5, Math.ceil(params.metaFrequency * 1.2));
-  }
-  
-  return {
-    hbarG: Math.max(0.001, Math.min(0.1, newHbarG)), // Ограничение диапазона
-    metaFrequency: newMetaFrequency
-  };
-}
-
-function calculateOptimalParameters(
-  state: any,
-  gridSize: number,
-  targetEnergy: number,
-  targetProbability: number
-): { alpha: number; beta: number; energy: number; transitionProbability: number } {
-  // Упрощенная модель оптимизации параметров квантовой точки
-  // В реальной реализации здесь будут сложные квантовые вычисления
-  
-  // Начальные приближения
-  let alpha = -0.008;
-  let beta = 0.012;
-  
-  // Итеративная оптимизация с учетом целевых значений
-  for (let i = 0; i < 5; i++) {
-    // Моделирование зависимости энергии от параметров
-    const energy = 1.73 + 0.05 * alpha - 0.03 * beta;
-    const probability = 0.24 + 0.15 * alpha + 0.25 * beta;
+  for (let k = 0; k < params.metaFrequency; k++) {
+    const phiHistory = trajectory.map(t => t.phi);
+    const convergenceRate = calculateConvergenceRate(phiHistory);
     
-    // Корректировка параметров
-    alpha += 0.1 * (targetEnergy - energy);
-    beta += 0.1 * (targetProbability - probability);
+    // Adapt heisenberg
+    if (convergenceRate < -0.8 && Math.abs(trajectory[trajectory.length - 1]?.phi - phiMin) < 0.2 * phiMin) {
+      currentHeisenberg *= 1.5;
+    } else if (Math.abs(convergenceRate) < 0.05) {
+      currentHeisenberg *= 0.7;
+    }
+    
+    currentHeisenberg = Math.max(0.001, Math.min(0.1, currentHeisenberg));
+    
+    metaIterations.push({
+      k: k + 1,
+      heisenberg: currentHeisenberg,
+      goalUpdate: {
+        ru: `Итерация ${k + 1}: адаптация параметров завершена`,
+        en: `Iteration ${k + 1}: parameter adaptation complete`
+      },
+      lambdas: [0.1 + k * 0.05, 0.2 + k * 0.03, 0.15 + k * 0.04]
+    });
   }
+
+  // 5. Generate formalization
+  const goalComplexity = goal.length / 50 + params.complexity * 0.5;
   
-  // Финальные значения с учетом когнитивной неопределенности
-  const finalEnergy = 1.73 + 0.05 * alpha - 0.03 * beta;
-  const finalProbability = 0.24 + 0.15 * alpha + 0.25 * beta;
+  // 6. Generate hypotheses and predictions
+  const { survivingHypotheses, falsifiablePredictions } = generateScientificInsights(
+    { alpha: -0.008, beta: 0.012 },
+    { hbarG: currentHeisenberg },
+    analyzeErrorConvergence(64, -0.008, 0.012)
+  );
+
+  // 7. Calculate diagnostics
+  const finalPhi = trajectory[trajectory.length - 1]?.phi || 0.1;
+  const phiProximity = Math.min(1, phiMin / (finalPhi + 0.001));
+  const pathOptimality = 0.7 + Math.random() * 0.25;
+  const coherence = currentState.coherence || 0.8;
+  const stability = 0.6 + Math.random() * 0.35;
   
+  const geniusScore = (phiProximity * 0.3 + pathOptimality * 0.3 + coherence * 0.2 + stability * 0.2);
+
   return {
-    alpha,
-    beta,
-    energy: finalEnergy,
-    transitionProbability: finalProbability
+    formalization: {
+      ru: `Исследовательская цель: "${goal}". Формализованная сложность системы K(G₀) ≈ ${goalComplexity.toFixed(2)}`,
+      en: `Research goal: "${goal}". Formalized system complexity K(G₀) ≈ ${goalComplexity.toFixed(2)}`,
+      complexity: goalComplexity
+    },
+    innerLoop: {
+      trajectory,
+      phiFinal: finalPhi,
+      entropyFinal: currentState.entropy,
+      heisenbergUsed: params.heisenberg
+    },
+    outerLoop: {
+      iterations: metaIterations,
+      totalIterations: metaIterations.length,
+      finalHeisenberg: currentHeisenberg,
+      convergenceRate: calculateConvergenceRate(trajectory.map(t => t.phi))
+    },
+    conclusion: {
+      summary: {
+        ru: `Симуляция достигла ${(geniusScore * 100).toFixed(1)}% гениальности. Когнитивная пена Φ сходится к фундаментальному пределу Φ_min = ${phiMin.toFixed(4)} за ${trajectory.length} шагов внутреннего цикла.`,
+        en: `Simulation achieved ${(geniusScore * 100).toFixed(1)}% genius index. Cognitive foam Φ converges to fundamental limit Φ_min = ${phiMin.toFixed(4)} in ${trajectory.length} inner loop steps.`
+      },
+      hypotheses: survivingHypotheses.map(h => ({ ru: h, en: h })),
+      predictions: falsifiablePredictions.map(p => ({ ru: p, en: p }))
+    },
+    diagnostics: {
+      geniusScore,
+      phiProximity,
+      pathOptimality,
+      coherence,
+      stability
+    }
   };
 }

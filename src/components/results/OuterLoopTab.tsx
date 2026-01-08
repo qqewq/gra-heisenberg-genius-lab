@@ -18,7 +18,7 @@ export function OuterLoopTab({ result }: OuterLoopTabProps) {
       {/* Adaptation formula */}
       <div className="p-4 bg-muted/30 rounded-lg border border-border/30">
         <div className="text-sm text-muted-foreground mb-2">
-          {t('results.outerLoop.adaptationFormula', language)}:
+          {language === 'ru' ? 'Формула адаптации' : 'Adaptation Formula'}:
         </div>
         <div className="formula text-sm">
           ℏG^(k+1) = ℏG^(k) · (1 + α · (dΦ/dt) / Φ_min)

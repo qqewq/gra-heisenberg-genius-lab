@@ -38,7 +38,7 @@ export const ParametersPanel = forwardRef<HTMLDivElement, ParametersPanelProps>(
           <div key={key} className="space-y-2">
             <div className="flex justify-between items-center">
               <Label className="text-sm text-muted-foreground">
-                {t(`params.${translationKey}`, language)}
+                {t(`parameters.${translationKey}`, language)}
               </Label>
               <span className="font-mono text-primary text-sm">
                 {params[key].toFixed(key === 'heisenberg' ? 2 : 0)}
@@ -51,7 +51,7 @@ export const ParametersPanel = forwardRef<HTMLDivElement, ParametersPanelProps>(
               step={step}
               onValueChange={([value]) => setParams({ ...params, [key]: value })}
               className="cursor-pointer"
-              aria-label={t(`params.${translationKey}`, language)}
+              aria-label={t(`parameters.${translationKey}`, language)}
             />
           </div>
         ))}
