@@ -1,9 +1,14 @@
-import { SimulatorUI } from '@/components/SimulatorUI';
+import { Routes, Route } from "react-router-dom";
+import Index from "@/pages/Index";
+import Auth from "@/pages/Auth";
+import NotFound from "@/pages/NotFound";
 
 export default function App() {
   return (
-    <div className="container mx-auto p-4 max-w-4xl py-8">
-      <SimulatorUI />
-    </div>
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
