@@ -1,15 +1,23 @@
 // src/lib/simulation/collapse-operator.ts
 
+import type { CognitiveState, MetaParams, SimulationStep } from './asi-hybrid-engine';
+
+export interface CriticalCluster {
+  hypotheses: Array<{ id: string; amplitude?: number }>;
+  coherence: number;
+  diameter: number;
+}
+
 export class CollapseOperator {
   async execute(state: CognitiveState, metaParams: MetaParams): Promise<SimulationStep> {
-    // 1. Детекция критического подмножества гипотез
-    const criticalSet = this.findCriticalCluster(state, metaParams);
+    // Find critical cluster of hypotheses
+    const criticalSet = this.findCriticalCluster(state);
     
     if (criticalSet.hypotheses.length === 0) {
       console.warn('No critical hypotheses found for collapse. Falling back to stable mode.');
       return {
         state,
-        phiValue: state.currentPhi,
+        phiValue: state.currentPhi || 1.0,
         phiChange: 0,
         mode: 'COLLAPSE_FAILED',
         timestamp: Date.now(),
@@ -17,69 +25,39 @@ export class CollapseOperator {
       };
     }
     
-    // 2. Вычисление фазовых сдвигов
-    const phaseShiftedHypotheses = this.computePhaseShifts(criticalSet, state.problem);
-    
-    // 3. Формирование гениального состояния
-    const geniusState = this.formGeniusState(phaseShiftedHypotheses, metaParams);
-    
-    // 4. Вычисление новой пены и метрик
-    const newPhi = this.computePhi(geniusState, metaParams);
-    const entropyChange = this.computeEntropyChange(state, geniusState);
+    // Calculate new phi value after collapse
+    const newPhi = (state.currentPhi || 1.0) * (1 - criticalSet.coherence * 0.5);
+    const newEntropy = (state.currentEntropy || 0.5) * 0.9;
     
     return {
-      state: geniusState,
+      state: {
+        ...state,
+        currentPhi: newPhi,
+        currentEntropy: newEntropy
+      },
       phiValue: newPhi,
-      phiChange: newPhi - state.currentPhi,
+      phiChange: newPhi - (state.currentPhi || 1.0),
       mode: 'REVOLUTIONARY_COLLAPSE',
       timestamp: Date.now(),
-      criticalSet: criticalSet,
-      entropyChange: entropyChange
+      criticalSet: criticalSet
     };
   }
   
-  private findCriticalCluster(state: CognitiveState, metaParams: MetaParams): CriticalCluster {
-    // Реализация поиска согласованного ядра гипотез
-    const graph = this.buildHypothesisGraph(state);
+  private findCriticalCluster(state: CognitiveState): CriticalCluster {
+    // Simplified cluster finding - in real implementation would use graph algorithms
+    const hypotheses = state.activeHypotheses || [];
     
-    // Поиск максимальной клики с диаметром < epsilon
-    const clusters = this.findDenseClusters(graph, metaParams.coherenceThreshold);
-    
-    if (clusters.length === 0) {
+    if (hypotheses.length === 0) {
       return { hypotheses: [], coherence: 0, diameter: Infinity };
     }
     
-    // Выбор кластера с максимальной когерентностью
-    return clusters.reduce((best, current) => 
-      current.coherence > best.coherence ? current : best
-    );
-  }
-  
-  private computePhaseShifts(criticalSet: CriticalCluster, problem: ScientificProblem): Hypothesis[] {
-    return criticalSet.hypotheses.map(hypothesis => {
-      // Оптимизация фазового сдвига для максимальной согласованности с данными
-      const optimalTheta = this.optimizePhaseShift(hypothesis, problem);
-      return {
-        ...hypothesis,
-        phase: optimalTheta,
-        amplitude: hypothesis.amplitude * (1 + criticalSet.coherence)
-      };
-    });
-  }
-  
-  private formGeniusState(phaseShiftedHypotheses: Hypothesis[], metaParams: MetaParams): CognitiveState {
-    // Нормализация и формирование гениального состояния
-    const totalAmplitude = phaseShiftedHypotheses.reduce(
-      (sum, h) => sum + Math.abs(h.amplitude), 0
-    );
+    // Return all hypotheses as a single cluster with computed coherence
+    const coherence = Math.min(1, 0.5 + hypotheses.length * 0.1);
     
     return {
-      ...phaseShiftedHypotheses.map(h => ({
-        ...h,
-        normalizedAmplitude: h.amplitude / totalAmplitude
-      })),
-      currentPhi: this.computePhiForState(phaseShiftedHypotheses, metaParams),
-      mode: 'GENIUS_STATE'
+      hypotheses: hypotheses.map(h => ({ id: h.id, amplitude: h.novelty })),
+      coherence,
+      diameter: 1 / coherence
     };
   }
 }
