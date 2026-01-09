@@ -1,251 +1,160 @@
 // src/components/SimulatorUI.tsx
-'use client';
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-
-// Типы
-interface SimulationParams {
-  complexityLevel: number;
-  innerSteps: number;
-  metaFrequency: number;
-  heisenbergConstant: number;
-  gridResolution: number;
-}
-
-interface SimulationResult {
-  alpha: number;
-  beta: number;
-  alphaUncertainty: number;
-  betaUncertainty: number;
-  achievedEnergy: number;
-  achievedTransitionProbability: number;
-  phiValue: number;
-  phiMin: number;
-  convergenceRate: number;
-  computationalComplexity: string;
-  estimatedRuntime: number;
-  survivingHypotheses: string[];
-  falsifiablePredictions: string[];
-}
+import { useState, useEffect } from 'react';
+import { ModeVisualization } from './ModeVisualization';
+import { CollapseVisualization } from './CollapseVisualization';
+import { StrategyControlPanel } from './StrategyControlPanel';
+import { HypothesisSpaceVisualizer } from './HypothesisSpaceVisualizer';
+import { PhiEvolutionChart } from './PhiEvolutionChart';
+import { SimulationControls } from './SimulationControls';
+import { ProblemInput } from './ProblemInput';
+import { SimulationResults } from './SimulationResults';
+import { ASIHybridEngine } from '@/lib/simulation/asi-hybrid-engine';
+import { defaultASIConfig } from '@/lib/config';
+import { ScientificProblem, MetaParams, SimulationState } from '@/types/simulation';
 
 export function SimulatorUI() {
-  const [isRunning, setIsRunning] = useState(false);
-  const [result, setResult] = useState<SimulationResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [goal, setGoal] = useState<string>('');
-  
-  // Параметры внешнего контура (из теории: θ⁽ᵏ⁾ = {ℏG, λk, μ, ...})
-  const [params, setParams] = useState<SimulationParams>({
-    complexityLevel: 1,
-    innerSteps: 8,
-    metaFrequency: 3,
-    heisenbergConstant: 0.01,
-    gridResolution: 200
+  const [problem, setProblem] = useState<ScientificProblem | null>(null);
+  const [simulationState, setSimulationState] = useState<SimulationState>({
+    isRunning: false,
+    mode: 'INITIALIZING',
+    currentPhi: 1.0,
+    currentEntropy: 0.5,
+    tension: 0,
+    metaParams: {
+      heisenbergConstant: 0.7,
+      criticalTension: 0.8,
+      phiStabilityLimit: 0.15,
+      minProgressRate: 0.005,
+      minCoherence: 0.7,
+      minSuccessThreshold: 0.6,
+      innerSteps: 10,
+      metaFrequency: 5
+    },
+    history: [],
+    criticalSet: null
   });
-
-  const runSimulation = async () => {
-    if (!goal.trim()) {
-      setError('Пожалуйста, опишите цель исследования (G₀)');
-      return;
-    }
-
-    setIsRunning(true);
-    setError(null);
+  
+  const [engine] = useState(() => new ASIHybridEngine(defaultASIConfig));
+  
+  const startSimulation = async () => {
+    if (!problem) return;
+    
+    setSimulationState(prev => ({
+      ...prev,
+      isRunning: true,
+      mode: 'STABLE_GRA',
+      currentPhi: 1.0,
+      tension: 0,
+      history: [],
+      criticalSet: null
+    }));
     
     try {
-      const response = await fetch(import.meta.env.VITE_API_URL + '/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal, ...params })
-      });
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const result = await engine.runSimulation(problem, 50);
       
-      const data: SimulationResult = await response.json();
-      setResult(data);
-    } catch (err) {
-      console.error('Simulation failed:', err);
-      setError('Ошибка при запуске симуляции. Убедитесь, что бэкенд запущен.');
-    } finally {
-      setIsRunning(false);
+      setSimulationState(prev => ({
+        ...prev,
+        isRunning: false,
+        mode: result.mode as any,
+        currentPhi: result.finalState.currentPhi,
+        currentEntropy: result.finalState.currentEntropy,
+        history: result.history,
+        criticalSet: result.history.find(step => step.mode === 'REVOLUTIONARY_COLLAPSE')?.criticalSet || null
+      }));
+    } catch (error) {
+      console.error('Simulation error:', error);
+      setSimulationState(prev => ({
+        ...prev,
+        isRunning: false,
+        mode: 'ERROR'
+      }));
     }
   };
-
+  
+  const updateMetaParams = (newParams: Partial<MetaParams>) => {
+    setSimulationState(prev => ({
+      ...prev,
+      metaParams: {
+        ...prev.metaParams!,
+        ...newParams
+      }
+    }));
+  };
+  
+  const forceRevolutionaryMode = () => {
+    setSimulationState(prev => ({
+      ...prev,
+      mode: 'REVOLUTIONARY_ACCUMULATION'
+    }));
+  };
+  
+  const resetSimulation = () => {
+    setSimulationState(prev => ({
+      ...prev,
+      isRunning: false,
+      mode: 'INITIALIZING',
+      currentPhi: 1.0,
+      tension: 0,
+      history: [],
+      criticalSet: null
+    }));
+  };
+  
   return (
-    <div className="space-y-6">
-      {/* Цель исследования G₀ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Цель исследования (G₀)</CardTitle>
-          <CardDescription>
-            Формулировка задачи для двухконтурной оптимизации
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-            placeholder="Например: найдите оптимальные параметры α и β для двумерной квантовой точки с энергией основного состояния E₀ = 1.732 эВ и вероятностью перехода P = 0.25 при t=5 фс..."
-            className="min-h-[120px] font-mono text-sm"
-            maxLength={5000}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Параметры внешнего контура */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Параметры симуляции (внешний контур)</CardTitle>
-          <CardDescription>
-            Мета-параметры системы: θ⁽ᵏ⁾ = {"{ℏG, λk, μ, ...}"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Уровень сложности D</Label>
-            <Input 
-              type="number" 
-              value={params.complexityLevel}
-              onChange={(e) => setParams({...params, complexityLevel: Number(e.target.value)})}
-              min="1" max="5"
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="text-center space-y-2 mb-6">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          ГИБРИДНЫЙ СИМУЛЯТОР ИИ-ГЕНИЯ
+        </h1>
+        <p className="text-muted-foreground">
+          GRA-Обнуленка Гейзенберг + GRA-R революционный коллапс
+        </p>
+      </div>
+      
+      <ProblemInput onProblemSubmit={setProblem} disabled={simulationState.isRunning} />
+      
+      {problem && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Левая колонка: управление и визуализация режимов */}
+          <div className="space-y-6">
+            <SimulationControls 
+              onStart={startSimulation} 
+              onReset={resetSimulation}
+              isRunning={simulationState.isRunning}
+            />
+            
+            <StrategyControlPanel 
+              simulationState={simulationState}
+              updateMetaParams={updateMetaParams}
+              forceRevolutionaryMode={forceRevolutionaryMode}
+              resetSimulation={resetSimulation}
+            />
+            
+            <ModeVisualization simulationState={simulationState} />
+            
+            <CollapseVisualization simulationState={simulationState} />
+          </div>
+          
+          {/* Правая колонка: визуализация гипотез и результатов */}
+          <div className="space-y-6">
+            <HypothesisSpaceVisualizer simulationState={simulationState} />
+            
+            <PhiEvolutionChart simulationHistory={simulationState.history} />
+            
+            <SimulationResults 
+              simulationState={simulationState} 
+              problem={problem}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Константа ℏG</Label>
-            <Input 
-              type="number" 
-              step="0.001"
-              value={params.heisenbergConstant}
-              onChange={(e) => setParams({...params, heisenbergConstant: Number(e.target.value)})}
-              min="0.001" max="0.1"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Внутренние шаги</Label>
-            <Input 
-              type="number" 
-              value={params.innerSteps}
-              onChange={(e) => setParams({...params, innerSteps: Number(e.target.value)})}
-              min="3" max="20"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Частота мета-итераций</Label>
-            <Input 
-              type="number" 
-              value={params.metaFrequency}
-              onChange={(e) => setParams({...params, metaFrequency: Number(e.target.value)})}
-              min="1" max="10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>GRA-Heisenberg Genius Simulator</CardTitle>
-          <CardDescription>
-            Симулятор когнитивного ИИ-гения на базе двухконтурной GRA-архитектуры
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Двухконтурная система с квантово-подобной динамикой состояний и мета-управлением
-              </p>
-            </div>
-            <div className="space-y-2">
-              <code className="text-xs bg-muted p-1 rounded">
-                H(Ψ) + Hᶜ(Ψ) = K(G₀), ΔΨ·ΔG ≥ ℏG/2
-              </code>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex justify-center">
-            <Button 
-              onClick={runSimulation} 
-              disabled={isRunning || !goal.trim()}
-              className="w-full md:w-auto"
-            >
-              {isRunning ? 'Запуск симуляции...' : 'Запустить симуляцию'}
-            </Button>
-          </div>
-
-          {error && (
-            <div className="text-red-500 text-sm p-2 bg-red-50 rounded">
-              {error}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* РЕЗУЛЬТАТЫ — ОБЯЗАТЕЛЬНО ДОЛЖНЫ БЫТЬ */}
-      {result && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Итоговый научный вывод</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>
-              На основе симулированного процесса оптимизации, наиболее вероятные оптимальные параметры:
-              <br />
-              <strong>α ≈ {result.alpha.toFixed(4)} ± {result.alphaUncertainty.toFixed(4)} эВ/нм⁴</strong>,{' '}
-              <strong>β ≈ {result.beta.toFixed(4)} ± {result.betaUncertainty.toFixed(4)} эВ/нм⁴</strong>
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-semibold mb-2">Достигнутые значения:</h4>
-                <ul className="text-sm space-y-1">
-                  <li>E₀ = {result.achievedEnergy.toFixed(4)} эВ</li>
-                  <li>P(переход) = {result.achievedTransitionProbability.toFixed(4)}</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Пена разума:</h4>
-                <ul className="text-sm space-y-1">
-                  <li>Φ = {result.phiValue.toFixed(6)}</li>
-                  <li>Φ_min = {result.phiMin.toFixed(6)}</li>
-                  <li>Скорость сходимости = {result.convergenceRate.toFixed(6)}</li>
-                </ul>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-2">Выжившие гипотезы:</h4>
-              <ul className="list-disc pl-5 space-y-1">
-                {result.survivingHypotheses.map((h, i) => (
-                  <li key={i} className="text-sm">{h}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-2">Предсказания и фальсифицируемые следствия:</h4>
-              <ul className="list-disc pl-5 space-y-1">
-                {result.falsifiablePredictions.map((p, i) => (
-                  <li key={i} className="text-sm">{p}</li>
-                ))}
-              </ul>
-            </div>
-
-            <Badge variant="secondary">
-              Сложность: {result.computationalComplexity}
-            </Badge>
-            <Badge>Время на RTX 3060: ~{result.estimatedRuntime.toFixed(1)} сек</Badge>
-          </CardContent>
-        </Card>
+        </div>
       )}
+      
+      <div className="mt-8 text-center text-sm text-muted-foreground">
+        <p>
+          Архитектура воспроизводит диалектику научного открытия: дисциплинированная оптимизация (GRA-Обнуленка) + управляемые прорывы (GRA-R коллапс)
+        </p>
+      </div>
     </div>
   );
 }
