@@ -104,7 +104,7 @@ export function SimulatorUI() {
         <CardHeader>
           <CardTitle>Параметры симуляции (внешний контур)</CardTitle>
           <CardDescription>
-            Мета-параметры системы: θ⁽ᵏ⁾ = {{ℏG, λk, μ, ...}}
+            Мета-параметры системы: θ⁽ᵏ⁾ = {"{ℏG, λk, μ, ...}"}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
