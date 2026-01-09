@@ -6,44 +6,74 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useSimulation } from '@/hooks/useSimulation';
 import { Brain, Zap, Shield, Target } from 'lucide-react';
 
-export function StrategyControlPanel() {
-  const { simulationState, updateMetaParams, forceRevolutionaryMode, resetSimulation } = useSimulation();
+interface MetaParams {
+  heisenbergConstant: number;
+  criticalTension: number;
+  phiStabilityLimit: number;
+  minProgressRate: number;
+  minCoherence: number;
+  minSuccessThreshold: number;
+  innerSteps: number;
+  metaFrequency: number;
+}
+
+interface SimulationState {
+  isRunning: boolean;
+  mode: string;
+  metaParams: MetaParams | null;
+}
+
+interface StrategyControlPanelProps {
+  simulationState: SimulationState;
+  updateMetaParams: (params: Partial<MetaParams>) => void;
+  forceRevolutionaryMode: () => void;
+  resetSimulation: () => void;
+}
+
+export function StrategyControlPanel({ 
+  simulationState, 
+  updateMetaParams, 
+  forceRevolutionaryMode,
+  resetSimulation 
+}: StrategyControlPanelProps) {
   const [autoMode, setAutoMode] = useState(true);
   
   const handleManualStrategyChange = (strategy: 'conservative' | 'balanced' | 'revolutionary') => {
-    const newParams = { ...simulationState.metaParams };
+    const updates: Partial<MetaParams> = {};
     
     switch (strategy) {
       case 'conservative':
-        newParams.heisenbergConstant = 0.3;
-        newParams.criticalTension = 0.95;
-        newParams.minProgressRate = 0.01;
+        updates.heisenbergConstant = 0.3;
+        updates.criticalTension = 0.95;
+        updates.minProgressRate = 0.01;
         break;
       case 'balanced':
-        newParams.heisenbergConstant = 0.7;
-        newParams.criticalTension = 0.8;
-        newParams.minProgressRate = 0.005;
+        updates.heisenbergConstant = 0.7;
+        updates.criticalTension = 0.8;
+        updates.minProgressRate = 0.005;
         break;
       case 'revolutionary':
-        newParams.heisenbergConstant = 1.5;
-        newParams.criticalTension = 0.3;
-        newParams.minProgressRate = 0.001;
+        updates.heisenbergConstant = 1.5;
+        updates.criticalTension = 0.3;
+        updates.minProgressRate = 0.001;
         break;
     }
     
-    updateMetaParams(newParams);
+    updateMetaParams(updates);
   };
   
   return (
-    <Card className="col-span-2">
+    <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Стратегическое управление</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Target className="h-4 w-4" />
+            Стратегия
+          </CardTitle>
           <div className="flex items-center space-x-2">
-            <Label htmlFor="auto-mode" className="text-sm">Автоматический режим</Label>
+            <Label htmlFor="auto-mode" className="text-xs">Авто</Label>
             <Switch 
               id="auto-mode" 
               checked={autoMode} 
@@ -54,129 +84,79 @@ export function StrategyControlPanel() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
+        <div className="space-y-4">
           {!autoMode && (
             <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-blue-500" />
-                  Выбор стратегии
-                </h4>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={simulationState.metaParams?.heisenbergConstant <= 0.4 ? "default" : "outline"}
-                    onClick={() => handleManualStrategyChange('conservative')}
-                    disabled={simulationState.isRunning}
-                  >
-                    <Shield className="w-4 h-4 mr-1" />
-                    Консервативная
-                  </Button>
-                  <Button
-                    variant={simulationState.metaParams?.heisenbergConstant > 0.4 && simulationState.metaParams?.heisenbergConstant < 1.0 ? "default" : "outline"}
-                    onClick={() => handleManualStrategyChange('balanced')}
-                    disabled={simulationState.isRunning}
-                  >
-                    <Brain className="w-4 h-4 mr-1" />
-                    Сбалансированная
-                  </Button>
-                  <Button
-                    variant={simulationState.metaParams?.heisenbergConstant >= 1.0 ? "default" : "outline"}
-                    onClick={() => handleManualStrategyChange('revolutionary')}
-                    disabled={simulationState.isRunning}
-                  >
-                    <Zap className="w-4 h-4 mr-1" />
-                    Революционная
-                  </Button>
-                </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={simulationState.metaParams?.heisenbergConstant === 0.3 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleManualStrategyChange('conservative')}
+                  disabled={simulationState.isRunning}
+                >
+                  <Shield className="w-3 h-3 mr-1" />
+                  Консерв.
+                </Button>
+                <Button
+                  variant={simulationState.metaParams?.heisenbergConstant === 0.7 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleManualStrategyChange('balanced')}
+                  disabled={simulationState.isRunning}
+                >
+                  <Brain className="w-3 h-3 mr-1" />
+                  Баланс
+                </Button>
+                <Button
+                  variant={simulationState.metaParams?.heisenbergConstant === 1.5 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleManualStrategyChange('revolutionary')}
+                  disabled={simulationState.isRunning}
+                >
+                  <Zap className="w-3 h-3 mr-1" />
+                  Рев.
+                </Button>
               </div>
               
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-purple-500" />
-                    Параметр Гейзенберга (ħ<sub>G</sub>)
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Определяет баланс между исследованием и эксплуатацией. Малые значения — дисциплинированный поиск, большие — творческий хаос.
-                  </p>
-                  <Slider
-                    value={[simulationState.metaParams?.heisenbergConstant || 0.7]}
-                    max={2.0}
-                    step={0.1}
-                    onValueChange={([value]) => {
-                      if (!simulationState.isRunning) {
-                        updateMetaParams({ ...simulationState.metaParams!, heisenbergConstant: value });
-                      }
-                    }}
-                    disabled={simulationState.isRunning}
-                  />
-                  <div className="flex justify-between text-xs mt-1">
-                    <span>0.1 — Строгая дисциплина</span>
-                    <span>2.0 — Полный хаос</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-500" />
-                    Порог напряжения для коллапса
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Минимальное напряжение, необходимое для активации революционного коллапса. Низкие значения приводят к более частым прорывам.
-                  </p>
-                  <Slider
-                    value={[simulationState.metaParams?.criticalTension || 0.8]}
-                    max={1.0}
-                    step={0.05}
-                    onValueChange={([value]) => {
-                      if (!simulationState.isRunning) {
-                        updateMetaParams({ ...simulationState.metaParams!, criticalTension: value });
-                      }
-                    }}
-                    disabled={simulationState.isRunning}
-                  />
-                  <div className="flex justify-between text-xs mt-1">
-                    <span>0.1 — Частые прорывы</span>
-                    <span>1.0 — Только при экстремальном застое</span>
-                  </div>
-                </div>
+              <div>
+                <Label className="text-xs">ħG: {simulationState.metaParams?.heisenbergConstant.toFixed(2)}</Label>
+                <Slider
+                  value={[simulationState.metaParams?.heisenbergConstant || 0.7]}
+                  max={2.0}
+                  min={0.1}
+                  step={0.1}
+                  onValueChange={([value]) => {
+                    if (!simulationState.isRunning) {
+                      updateMetaParams({ heisenbergConstant: value });
+                    }
+                  }}
+                  disabled={simulationState.isRunning}
+                  className="mt-2"
+                />
               </div>
             </div>
           )}
           
           {autoMode && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-start gap-3">
-                <Brain className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium">Автоматический стратегический выбор</h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Система сама определяет оптимальную стратегию на основе:
-                    <ul className="list-disc pl-5 mt-1 space-y-1">
-                      <li>Текущей скорости сходимости</li>
-                      <li>Структуры гипотезного пространства</li>
-                      <li>Истории предыдущих коллапсов</li>
-                      <li>Сложности поставленной задачи</li>
-                    </ul>
-                  </p>
-                </div>
+            <div className="bg-primary/5 p-3 rounded-lg border border-primary/20">
+              <div className="flex items-start gap-2">
+                <Brain className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Автоматический выбор стратегии на основе прогресса симуляции
+                </p>
               </div>
             </div>
           )}
           
-          <div className="pt-4 border-t">
-            <Button 
-              className="w-full"
-              onClick={forceRevolutionaryMode}
-              disabled={simulationState.isRunning || simulationState.mode === 'REVOLUTIONARY_COLLAPSE'}
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              Принудительно активировать революционный режим
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Активирует режим накопления напряжения независимо от текущих условий
-            </p>
-          </div>
+          <Button 
+            className="w-full"
+            size="sm"
+            variant="outline"
+            onClick={forceRevolutionaryMode}
+            disabled={simulationState.isRunning || simulationState.mode === 'REVOLUTIONARY_COLLAPSE'}
+          >
+            <Zap className="w-3 h-3 mr-2" />
+            Форсировать революцию
+          </Button>
         </div>
       </CardContent>
     </Card>

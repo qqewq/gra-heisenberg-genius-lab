@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { ArchitectureCard } from '@/components/ArchitectureCard';
@@ -121,9 +121,5 @@ function SimulatorContent() {
 }
 
 export default function Index() {
-  return (
-    <LanguageProvider>
-      <SimulatorContent />
-    </LanguageProvider>
-  );
+  return <SimulatorContent />;
 }
